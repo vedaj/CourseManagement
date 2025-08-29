@@ -6,7 +6,7 @@
 set -e
 [[ "${TRACE:-0}" == "1" ]] && set -x
 
-ORG="${ORG:-19CSE352-2025-Odd}"
+ORG="${ORG:-23CSE101-2025-Odd}"
 ACCEPT="Accept: application/vnd.github+json"
 CONTENT="Content-Type: application/json"
 DRY_RUN="${DRY_RUN:-0}"
