@@ -1,62 +1,67 @@
 #!/bin/zsh
 #
-# Script Name: extract_name_email.sh
-# Purpose    : Extract only Name and College Email columns from a CSV file
-#              and convert all names to Title Case.
+# Script Name : extract_name_email.sh
+# Purpose     : Extract only Name and College Email columns from a CSV file,
+#               convert names to Title Case (handling hyphens and apostrophes),
+#               and emails to lowercase.
 #
-# Usage      : 
-#   ./extract_name_email.sh input.csv > output.csv
+# Usage       :
+#   ./extract_name_email.sh input.csv output.csv
 #
-# Example    :
-#   Given an input.csv with headers:
-#   SL NO,Roll No,Name,Group,Gender,College Email,Class Code,Course,WhatsApp No,Enrolled Year
-#   1,12345,john DOE,A,M,john.doe@college.edu,C101,CS,9876543210,2023
+# Example     :
+#   ./extract_name_email.sh StudentListOriginal.csv NameEmail.csv
 #
-#   Run:
-#   ./extract_name_email.sh input.csv > clean.csv
-#
-#   Output (clean.csv):
-#   Name,College Email
-#   John Doe,john.doe@college.edu
-#
-# Notes      :
+# Notes       :
 #   - Assumes CSV is comma-separated.
-#   - Column order must match headers shown above.
 #   - $3 = Name column, $6 = College Email column.
-#   - Works with multi-word names, ensuring each word is Title Cased.
-#   - Redirect output to a new file (e.g., output.csv) to preserve results.
+#   - Output will contain header: "Name,College Email".
+#
 
-input_file="$1"  # First argument to script is the CSV file name
+input_file="$1"
+output_file="$2"
 
-# awk is used for column extraction and text processing
-awk -F',' '
-    # For the first row (header), override with "Name,College Email"
-    NR==1 { 
-        print "Name,College Email"; 
-        next 
-    } 
-    {
-        # Extract columns
-        name=$3         # Name column
-        email=$6        # College Email column
+if [[ -z "$input_file" || -z "$output_file" ]]; then
+  echo "Usage: $0 input.csv output.csv"
+  exit 1
+fi
 
-        # Split the name into words based on space
-        split(name, parts, " ")
-
-        # Loop through each word in the name
-        for (i in parts) {
-            # Convert first letter to uppercase, rest to lowercase
-            parts[i] = toupper(substr(parts[i],1,1)) tolower(substr(parts[i],2))
+awk -F',' 'BEGIN{OFS=","}
+# Function: TitleCase a word, including parts split by "-" and "'"
+function toTitleCase(word,   n, parts, i, j, subpart, result) {
+    n = split(word, parts, /[-'']/)  # split on - or '
+    result = word
+    j = 1
+    for (i = 1; i <= n; i++) {
+        if (length(parts[i]) > 0) {
+            subpart = toupper(substr(parts[i],1,1)) tolower(substr(parts[i],2))
+            # replace only the next occurrence of the part
+            match(result, parts[i])
+            if (RSTART > 0) {
+                result = substr(result,1,RSTART-1) subpart substr(result,RSTART+RLENGTH)
+            }
         }
-
-        # Rebuild the full name after conversion
-        name_out = parts[1]
-        for (i=2; i<=length(parts); i++) {
-            name_out = name_out " " parts[i]
-        }
-
-        # Print processed row with only Name and Email
-        print name_out "," email
     }
-' "$input_file"
+    return result
+}
+
+NR==1 {
+    print "Name","College Email"
+    next
+}
+{
+    name=$3
+    email=tolower($6)
+
+    split(name, words, " ")
+    for (i in words) {
+        words[i] = toTitleCase(words[i])
+    }
+
+    name_out = words[1]
+    for (i=2; i<=length(words); i++) {
+        name_out = name_out " " words[i]
+    }
+
+    print name_out, email
+}' "$input_file" > "$output_file"
 
